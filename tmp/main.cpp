@@ -153,6 +153,64 @@ std::vector<int> recursive_delete_elements_untill_with_caching(std::vector<int> 
 	return std::move(max_elements);
 }
 
+std::vector<int> recursive_delete_elements_untill_with_caching2(std::vector<int> elements, std::function<bool(int&, int&)> comparator, std::function<bool(size_t, size_t)> &cache_it, size_t shift_from_beginning = 0, size_t elements_deleted = 0) noexcept
+{
+	if (std::is_sorted(elements.begin(), elements.end(), comparator))
+		return std::move(elements);
+
+	std::vector<int> max_elements;
+
+	auto current_elements_deleted = elements_deleted + 1;
+	for (size_t current_shift = 0; current_shift != elements.size(); ++current_shift)
+	{
+		auto current_element_id = shift_from_beginning + current_shift;
+
+		// предполагаем, что точно выполним работу. Поэтому говорим, что задача выполнена ещё до её непосредственного выполнения.
+		// функция noexcept. 
+		// todo: Если же конструкторы копирования могут кидать исключения, или же исключение может реально вызываться в процессе выполнения задачи, то это надо обработать отдельно, или же переделать кеширование с проверки(read) и кеширвоания после выполнения работы(write).
+		bool was_it_cached = cache_it(current_element_id, current_elements_deleted);
+		if (was_it_cached)
+			continue;
+
+		std::vector<int> copy_without_current;
+		copy_without_current.reserve(elements.size() - 1);
+
+		// Кастомное копирование содержимого элементов, исключая текущий
+		// Альтернатива вида ниже может приводить к избыточному копированию элементов, если текущий не в конце. 
+		//		А ещё приводит к избыточному использованию памяти на 1 лишний элемент, а если же делать shrink_to_size, 
+		//			то всё станет ещё хуже(избыточная деаллокация памяти и копирование).
+		//		Скорее всего элемент не в конце, вероятность чего (N-1)/N. Против веротяности в конце 1/N.
+		//			std::vector<int> copy_without_current = elements;
+		//			copy_without_current.erase(elements.begin() + current_shift)
+		{
+			if (current_shift != 0)
+			{
+				if (/*де факто выполняется, т.к. элементы не отсортированы elements.size() > 1 && */
+					current_shift == 1)// перед текущим только первый элемент и через пару итераторов его не вставить
+					copy_without_current.emplace_back(elements.front());
+				else// если бы текущий элемент был первым, то мы бы вышли за границы массива
+					copy_without_current.insert(copy_without_current.end(), elements.begin(), elements.begin() + current_shift);
+			}
+
+			auto last_element_id = elements.size() - 1;
+			if (current_shift != last_element_id)
+			{
+				if (/*де факто выполняется, т.к. элементы не отсортированы elements.size() > 1 && */
+					current_shift == (last_element_id - 1))// после текущено только последний элемент и через пару итераторов его не вставить
+					copy_without_current.emplace_back(elements.back());
+				else
+					copy_without_current.insert(copy_without_current.end(), elements.begin() + current_shift + 1, elements.end());
+			}
+		}
+
+		auto result = recursive_delete_elements_untill_with_caching2(std::move(copy_without_current), comparator, cache_it, current_element_id, current_elements_deleted);
+		if (std::is_sorted(result.begin(), result.end(), comparator) && result.size() > max_elements.size())
+			max_elements = std::move(result);
+	}
+
+	return std::move(max_elements);
+}
+
 void run_tests(std::function<std::vector<int>(std::vector<int>, std::function<bool(int&, int&)>, std::function<bool(size_t, size_t)>&, size_t, size_t)> testee, std::function<bool(size_t, size_t)> cache_it, std::function<void()> clear_cache)
 {
 	// Док-во по индукции
@@ -235,6 +293,7 @@ int main(int argc, char *argv[])
 
 	std::vector<int> container{ 1,4,2,3,4 }; // we need 1, 2, 3, 4
 	//delete_elements_untill(container, std::greater<int>());
+
 	//auto result = recursive_delete_elements_untill(std::move(container), std::less<int>());
 
 	{
@@ -244,7 +303,10 @@ int main(int argc, char *argv[])
 			return std::exchange(cache[element_id][shift_to_end], true);
 		};
 
-		auto result = recursive_delete_elements_untill_with_caching(std::move(container), std::less<int>(), calculated_cache_impl);
+		//auto result = recursive_delete_elements_untill_with_caching(std::move(container), std::less<int>(), calculated_cache_impl);
+		//cache.clear();
+
+		run_tests(&recursive_delete_elements_untill_with_caching2, calculated_cache_impl, [&cache]() { cache.clear(); });
 	}
 
 	return EXIT_SUCCESS;
