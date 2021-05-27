@@ -211,6 +211,116 @@ std::vector<int> recursive_delete_elements_untill_with_caching2(std::vector<int>
 	return std::move(max_elements);
 }
 
+class ICache
+{
+public:
+	virtual ~ICache() = default;
+	virtual bool is_cached(size_t crossed_of_element_id, size_t crossed_of_elements) = 0;
+	virtual void cache(size_t crossed_of_element_id, size_t crossed_of_elements, std::vector<int> result) = 0;
+};
+
+void async_recursive_delete_elements_untill_with_caching2(
+	std::vector<int> elements, 
+	std::function<bool(int&, int&)> comparator, 
+	ICache *cache,
+	boost::asio::io_service *service, 
+	size_t shift_from_beginning = 0, 
+	size_t elements_deleted = 0
+) noexcept
+{
+	if (std::is_sorted(elements.begin(), elements.end(), comparator))
+	{
+		cache->cache(shift_from_beginning, elements_deleted, std::move(elements));
+		return;
+	}
+
+	auto current_elements_deleted = elements_deleted + 1;
+	for (size_t current_shift = 0; current_shift != elements.size(); ++current_shift)
+	{
+		auto current_element_id = shift_from_beginning + current_shift;
+
+		// предполагаем, что точно выполним работу. Поэтому говорим, что задача выполнена ещё до её непосредственного выполнения.
+		// функция noexcept. 
+		// todo: Если же конструкторы копирования могут кидать исключения, или же исключение может реально вызываться в процессе выполнения задачи, то это надо обработать отдельно, или же переделать кеширование с проверки(read) и кеширвоания после выполнения работы(write).
+		bool was_it_cached = cache->is_cached(current_element_id, current_elements_deleted);
+		if (was_it_cached)
+			continue;
+
+		std::vector<int> copy_without_current;
+		copy_without_current.reserve(elements.size() - 1);
+
+		// Кастомное копирование содержимого элементов, исключая текущий
+		// Альтернатива вида ниже может приводить к избыточному копированию элементов, если текущий не в конце. 
+		//		А ещё приводит к избыточному использованию памяти на 1 лишний элемент, а если же делать shrink_to_size, 
+		//			то всё станет ещё хуже(избыточная деаллокация памяти и копирование).
+		//		Скорее всего элемент не в конце, вероятность чего (N-1)/N. Против веротяности в конце 1/N.
+		//			std::vector<int> copy_without_current = elements;
+		//			copy_without_current.erase(elements.begin() + current_shift)
+		{
+			if (current_shift != 0)
+			{
+				if (/*де факто выполняется, т.к. элементы не отсортированы elements.size() > 1 && */
+					current_shift == 1)// перед текущим только первый элемент и через пару итераторов его не вставить
+					copy_without_current.emplace_back(elements.front());
+				else// если бы текущий элемент был первым, то мы бы вышли за границы массива
+					copy_without_current.insert(copy_without_current.end(), elements.begin(), elements.begin() + current_shift);
+			}
+
+			auto last_element_id = elements.size() - 1;
+			if (current_shift != last_element_id)
+			{
+				if (/*де факто выполняется, т.к. элементы не отсортированы elements.size() > 1 && */
+					current_shift == (last_element_id - 1))// после текущено только последний элемент и через пару итераторов его не вставить
+					copy_without_current.emplace_back(elements.back());
+				else
+					copy_without_current.insert(copy_without_current.end(), elements.begin() + current_shift + 1, elements.end());
+			}
+		}
+
+		service->post(
+			[comparator, cache, moved_copy_without_current = std::move(copy_without_current), service, current_element_id, current_elements_deleted]()
+			{ 
+				async_recursive_delete_elements_untill_with_caching2(std::move(moved_copy_without_current), comparator, cache, service, current_element_id, current_elements_deleted);
+			}
+		);
+	}
+	
+}
+
+class ThreadsafeCache
+	: public ICache
+{
+	boost::shared_mutex cache_mutex_;
+	std::unordered_map<size_t, std::unordered_map<size_t, std::vector<int>>> cache_;
+public:
+	~ThreadsafeCache() override = default;
+	bool is_cached(size_t crossed_off_element_id, size_t crossed_off_elements)  override
+	{
+		try
+		{
+			boost::shared_lock<decltype(cache_mutex_)> cache_lock(cache_mutex_);
+			auto &elements = cache_.at(crossed_off_element_id).at(crossed_off_elements);
+
+			return true;
+		}
+		catch (const std::exception&)
+		{
+		}
+
+		return false;
+	}
+	void cache(size_t crossed_of_element_id, size_t crossed_of_elements, std::vector<int> result) override
+	{
+		boost::unique_lock<decltype(cache_mutex_)> cache_lock(cache_mutex_);
+		cache_[crossed_of_element_id][crossed_of_elements] = std::move(result);
+	}
+
+	decltype(cache_) const& get_cache()
+	{
+		return cache_;
+	}
+};
+
 void run_tests(std::function<std::vector<int>(std::vector<int>, std::function<bool(int&, int&)>, std::function<bool(size_t, size_t)>&, size_t, size_t)> testee, std::function<bool(size_t, size_t)> cache_it, std::function<void()> clear_cache)
 {
 	// Док-во по индукции
@@ -285,6 +395,94 @@ void run_tests(std::function<std::vector<int>(std::vector<int>, std::function<bo
 	assert(test.size() == 4);
 	clear_cache();
 }
+void run_tests_for_async()
+{
+	auto run_test = [](std::vector<int> elements, size_t expected)
+	{
+		std::unique_ptr<boost::asio::io_service> service;
+		std::unique_ptr<boost::asio::io_service::strand> strand;
+		std::unique_ptr<boost::asio::io_service::work> work;
+
+		service = std::make_unique<decltype(service)::element_type>();
+		strand = std::make_unique<decltype(strand)::element_type>(*service);
+		work = std::make_unique<decltype(work)::element_type>(*service);
+
+		auto thread_fun = [](decltype(service) &service)
+		{
+			try { service->run(); }
+			catch (boost::thread_interrupted const &)
+			{
+			}
+		};
+		boost::thread_group threads;
+		for (size_t i = 0; i < 10; i++)
+		{
+			threads.add_thread(new boost::thread(
+				thread_fun,
+				std::ref(service)
+			)
+			);
+		}
+
+		std::unique_ptr<ThreadsafeCache> cache = std::make_unique<ThreadsafeCache>();
+
+		async_recursive_delete_elements_untill_with_caching2(elements, std::less<int>(), cache.get(), service.get());
+
+		// пусть не сообщает сервису о задачах
+		work.reset();
+		threads.join_all();
+
+		std::vector<int> const *max_elements = nullptr;
+		for (auto &cache_pair : cache->get_cache())
+		{
+			auto local_max_elements = std::max_element(cache_pair.second.begin(), cache_pair.second.end(),
+				[](decltype(*cache_pair.second.begin()) left, decltype(*cache_pair.second.begin()) right)
+			{
+				return left.second.size() < right.second.size();
+			}
+			);
+
+			if (!max_elements || max_elements->size() < local_max_elements->second.size())
+				max_elements = &local_max_elements->second;
+		}
+
+		assert(max_elements && max_elements->size() == expected);
+
+		// остановим сервис
+		service->stop();
+		// удаляем все неисполненные задачи
+		service.reset();
+	};
+
+	// Док-во по индукции
+	run_test({ 1 }, 1);
+
+	run_test({ 1,2 }, 2);
+	run_test({ 2,1 }, 1);
+
+	run_test({ 1,3,2 }, 2);
+	run_test({ 1,2,3 }, 3);
+	run_test({ 2,1,3 }, 2);
+	run_test({ 2,3,1 }, 2);
+	run_test({ 3,1,2 }, 2);
+	run_test({ 3,2,1 }, 1);
+
+	// рандомные тесты
+	run_test({ 1,3,2,4 }, 3);
+	run_test({ 2,1,3,2 }, 2);
+
+	run_test({ 1,3,2,4,5 },4);
+
+	run_test({ 3,2,3,4,5 },4);
+
+	run_test({ 4,2,3,1,5 },3);
+
+	run_test({ 4,5,1,3,6 },3);
+
+	run_test({ 1,3,6,4,5 },4);
+
+	run_test({ 1,4,2,3,4 },4);
+}
 
 
 int main(int argc, char *argv[])
@@ -303,10 +501,67 @@ int main(int argc, char *argv[])
 			return std::exchange(cache[element_id][shift_to_end], true);
 		};
 
-		//auto result = recursive_delete_elements_untill_with_caching(std::move(container), std::less<int>(), calculated_cache_impl);
-		//cache.clear();
+		auto result = recursive_delete_elements_untill_with_caching(std::move(container), std::less<int>(), calculated_cache_impl);
+		cache.clear();
 
 		run_tests(&recursive_delete_elements_untill_with_caching2, calculated_cache_impl, [&cache]() { cache.clear(); });
+	}
+
+	{
+		run_tests_for_async();
+
+		std::unique_ptr<boost::asio::io_service> service;
+		std::unique_ptr<boost::asio::io_service::strand> strand;
+		std::unique_ptr<boost::asio::io_service::work> work;
+
+		service = std::make_unique<decltype(service)::element_type>();
+		strand = std::make_unique<decltype(strand)::element_type>(*service);
+		work = std::make_unique<decltype(work)::element_type>(*service);
+
+		auto thread_fun = [](decltype(service) &service)
+		{
+			try { service->run(); }
+			catch (boost::thread_interrupted const &)
+			{
+			}
+		};
+		boost::thread_group threads;
+		for (size_t i = 0; i < 10; i++)
+		{
+			threads.add_thread(new boost::thread(
+					thread_fun,
+					std::ref(service)
+				)
+			);
+		}
+
+		std::unique_ptr<ThreadsafeCache> cache = std::make_unique<ThreadsafeCache>();
+
+		async_recursive_delete_elements_untill_with_caching2({1,3,2}, std::less<int>(), cache.get(), service.get());
+
+		// пусть не сообщает сервису о задачах
+		work.reset();
+		threads.join_all();
+
+
+		std::vector<int> const *max_elements = nullptr;
+		for (auto &cache_pair : cache->get_cache())
+		{
+			auto local_max_elements = std::max_element(cache_pair.second.begin(), cache_pair.second.end(),
+				[](decltype(*cache_pair.second.begin()) left, decltype(*cache_pair.second.begin()) right)
+				{
+					return left.second.size() < right.second.size();
+				}
+			);
+
+			if (!max_elements || max_elements->size() < local_max_elements->second.size())
+				max_elements = &local_max_elements->second;
+		}
+
+		// остановим сервис
+		service->stop();
+		// удаляем все неисполненные задачи
+		service.reset();
 	}
 
 	return EXIT_SUCCESS;
