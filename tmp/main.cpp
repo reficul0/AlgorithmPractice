@@ -11,7 +11,6 @@
 #include <boost/asio.hpp>
 #include <boost/thread/thread_pool.hpp>
 
-#include "program_options.h"
 
 // todo: удаляет не наименьшее число элементов.
 void delete_elements_untill(std::vector<int> &elements, std::function<bool(int&, int&)> comparator)
