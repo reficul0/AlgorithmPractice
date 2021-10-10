@@ -16,5 +16,24 @@
 	#include <windows.h>  
 #endif // _WIN32
 
+#define _SILENCE_FPOS_SEEKPOS_DEPRECATION_WARNING					
+
+#include <list>
+#include <unordered_map>
+#include <unordered_set>
+
+#include <boost/pool/pool_alloc.hpp>
+#include <boost/thread/shared_mutex.hpp>
+#include <boost/thread/locks.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/thread_pool.hpp>
+#include <boost/thread/thread.hpp>
+
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/member.hpp>
+#include <boost/multi_index/mem_fun.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/composite_key.hpp>
 
 #endif //PCH_H
