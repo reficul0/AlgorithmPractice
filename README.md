@@ -1,3 +1,4 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/38vohc1jc9ol72dp/branch/master?svg=true)](https://ci.appveyor.com/project/reficul0/algorithmpractice/branch/master)<br>
 ![language](https://img.shields.io/badge/language-c++-blue.svg)
 ![c++](https://img.shields.io/badge/std-c++14-blue.svg)
 
