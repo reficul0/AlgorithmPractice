@@ -67,6 +67,7 @@ target_compile_definitions(${PROJECT_NAME}
     PRIVATE NOMINMAX
 )
 if(UNIX)
+	add_compiler_options(-lboost_thread-mt)
 	set(CMAKE_C_FLAGS " -fpermissive")
 	set(CMAKE_CXX_FLAGS " -fpermissive")
 	find_library(pthread STATIC)
