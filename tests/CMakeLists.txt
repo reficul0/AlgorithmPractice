@@ -5,6 +5,9 @@ project( UnitTests )
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} SOURCES)
 file(GLOB HEADERS "*.h")
 
+if(UNIX)
+	add_compile_options(-lboost_thread -lboost_system)
+endif()
 # Creating target
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
@@ -67,7 +70,6 @@ target_compile_definitions(${PROJECT_NAME}
     PRIVATE NOMINMAX
 )
 if(UNIX)
-	add_compile_options(-lboost_thread -lboost_system)
 	set(CMAKE_C_FLAGS " -fpermissive")
 	set(CMAKE_CXX_FLAGS " -fpermissive")
 	find_library(pthread STATIC)
