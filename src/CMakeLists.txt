@@ -5,10 +5,6 @@ project( Algorithm )
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} SOURCES)
 file(GLOB HEADERS "*.h")
 
-if(UNIX)
-	add_compile_options(-lboost_thread -lboost_system)
-endif()
-
 # Creating target
 add_library( ${PROJECT_NAME} ${SOURCES} ${HEADERS} )
 
@@ -22,7 +18,6 @@ set(BOOST_LIBRARY_DIR ${CONAN_LIB_DIRS_BOOST})
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost 1.70.0 EXACT 
 	REQUIRED COMPONENTS 
-		unit_test_framework 
 		regex 
 		system 
 		filesystem 
@@ -36,7 +31,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${BOOST_INCLUDEDIR})
 target_link_directories(${PROJECT_NAME} PRIVATE  ${BOOST_LIBRARYDIR})
 target_link_libraries(${PROJECT_NAME} 
 	${CONAN_LIBS} 
-	Boost::unit_test_framework 
 	Boost::regex 
 	Boost::system 
 	Boost::filesystem

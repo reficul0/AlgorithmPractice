@@ -5,9 +5,6 @@ project( UnitTests )
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} SOURCES)
 file(GLOB HEADERS "*.h")
 
-if(UNIX)
-	add_compile_options(-lboost_thread -lboost_system)
-endif()
 # Creating target
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
@@ -32,19 +29,6 @@ find_package(Boost 1.70.0 EXACT
 )
 target_include_directories(${PROJECT_NAME} PRIVATE ${BOOST_INCLUDEDIR})
 target_link_directories(${PROJECT_NAME} PRIVATE  ${BOOST_LIBRARYDIR})
-target_link_libraries(${PROJECT_NAME} 
-	${CONAN_LIBS} 
-	Boost::unit_test_framework 
-	Boost::regex 
-	Boost::system 
-	Boost::filesystem
-	Boost::date_time 
-	Boost::chrono 
-	Boost::thread 
-	Boost::locale  
-	Boost::iostreams
-)
-
 set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/pch.cpp PROPERTIES COTIRE_EXCLUDED ON)
 
 # Linking with testee
@@ -62,7 +46,21 @@ set_target_properties(TesteeLib
 		INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/src
 )
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src)
-target_link_libraries(${PROJECT_NAME} TesteeLib)
+
+target_link_libraries(${PROJECT_NAME} 
+	${CONAN_LIBS} 
+	TesteeLib
+	Boost::unit_test_framework 
+	Boost::regex 
+	Boost::system 
+	Boost::filesystem
+	Boost::date_time 
+	Boost::chrono 
+	Boost::thread 
+	Boost::locale  
+	Boost::iostreams
+)
+
 add_dependencies(${PROJECT_NAME} Algorithm)
 
 # Standard setup of target
