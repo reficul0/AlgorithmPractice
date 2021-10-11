@@ -19,6 +19,7 @@
 ### Зависимости
 
 * [Обязательно] - [Conan](https://conan.io/).
+* [Обязательно] - pthread(Linux only).
 * [Устанавливается через conan] - [Boost 1.70](http://www.boost.org/).
 
 ### Сборка на Windows
