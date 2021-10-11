@@ -74,3 +74,6 @@ if(UNIX)
 	target_link_libraries(${PROJECT_NAME} pthread)
 endif()
 
+
+# declares a test with our executable
+add_test(NAME UnitTests COMMAND ${PROJECT_NAME})
