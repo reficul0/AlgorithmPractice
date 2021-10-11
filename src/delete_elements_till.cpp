@@ -68,10 +68,10 @@ namespace algo
 
 					boost::asio::post(
 						executor,
-						[copy_without_current, comparator, cache, &executor, current_element_id,
+						[copy_without_current, comparator, cache, &executor, shift_from_beginning,
 							current_elements_deleted]
 						{
-							return delete_elements_till(std::move(*copy_without_current), comparator, cache, executor, current_element_id,
+							return delete_elements_till(std::move(*copy_without_current), comparator, cache, executor, shift_from_beginning+1,
 								current_elements_deleted);
 						}
 					);

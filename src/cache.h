@@ -14,87 +14,77 @@ namespace algo
 	public:
 		using cache_t = std::vector<int>;
 		using key_t = boost::tuple<size_t/*crossed_off_element_id*/, size_t/*crossed_off_elements*/>;
-		struct CachedData
-		{
-			key_t key;
-			cache_t data;
-			size_t crossed_off_element_id() const
-			{
-				return key.get<0>();
-			}
-			size_t crossed_off_elements() const
-			{
-				return key.get<1>();
-			}
-			typename cache_t::size_type data_size() const
-			{
-				return data.size();
-			}
-			CachedData(key_t key, cache_t cache) noexcept(std::is_nothrow_move_constructible<cache_t>::value)
-				: data(std::move(cache))
-				, key(key)
-			{
-			}
-			
-			CachedData(CachedData &&other) noexcept(std::is_nothrow_move_constructible<cache_t>::value)
-				: CachedData(other.key, std::move(other.data))
-			{
-			}
-			CachedData& operator=(CachedData &&other) noexcept(std::is_nothrow_move_constructible<cache_t>::value)
-			{
-				if(this != &other)
-				{
-					data = std::move(other.data);
-					key = other.key;
-				}
-				return *this;
-			}
-		};
 
-		using cache_pool_t = boost::multi_index::multi_index_container<
-			CachedData,
-			boost::multi_index::indexed_by<
-				boost::multi_index::ordered_non_unique<
-					boost::multi_index::tag<CacheByElementsCountInCacheDesc>,
-				    boost::multi_index::const_mem_fun<CachedData, size_t, &CachedData::data_size>,
-					std::greater<>
-				>,
-				boost::multi_index::hashed_unique<
-					boost::multi_index::tag<CacheByCachedDataKey>,
-				    boost::multi_index::composite_key<
-						CachedData,
-						boost::multi_index::const_mem_fun<CachedData, size_t, &CachedData::crossed_off_element_id>,
-						boost::multi_index::const_mem_fun<CachedData, size_t, &CachedData::crossed_off_elements>
-					>
-				>
-			>
-		>;
+		Cache(size_t elements_count)
+			: max_elements_cache(std::make_pair(
+				boost::make_tuple(0, 0),
+				0
+			))
+			, cache_()
+		{
+			assert(elements_count != 0);
+			cache_.resize(elements_count);
+		}
 
 		bool is_cached(key_t key)
 		{
-			boost::shared_lock<decltype(cache_mutex_)> cache_lock(cache_mutex_);
-			auto &elements_by_key = cache_.template get<CacheByCachedDataKey>();
-			auto data = elements_by_key.find(key);
-			return data != elements_by_key.end();
+			auto &crossed_off_element_cache = cache_[key.get<0>()];
+			
+			boost::shared_lock<boost::shared_mutex> read_lock(crossed_off_element_cache.mutex);
+			auto cache = crossed_off_element_cache.container.find(key.get<1>());
+			return cache != crossed_off_element_cache.container.end();
 		}
 		void cache(key_t key, cache_t cache)
 		{
-			boost::unique_lock<decltype(cache_mutex_)> cache_lock(cache_mutex_);
-			auto &elements_by_key = cache_.template get<CacheByCachedDataKey>();
-			elements_by_key.emplace(
-				CachedData(key, std::move(cache))
-			);
+			auto &crossed_off_element_cache = cache_[key.get<0>()];
+
+			boost::upgrade_lock<boost::shared_mutex> read_lock(crossed_off_element_cache.mutex);
+			auto cached_elements = crossed_off_element_cache.container.find(key.get<1>());
+			if(cached_elements != crossed_off_element_cache.container.end())
+				// это значение уже закешировано
+				return;
+			{
+				boost::upgrade_to_unique_lock<boost::shared_mutex> write_lock(read_lock);
+				cached_elements = crossed_off_element_cache.container.emplace_hint(
+					cached_elements,
+					std::make_pair(
+						key.get<1>(),
+						std::move(cache)
+					)
+				);
+			}
+			if(cached_elements->second.size() > max_elements_cache.second)
+				max_elements_cache = std::make_pair(key, cached_elements->second.size());
 		}
 		/**
 		 * \warning multithread unsafe
 		 */
-		cache_pool_t const& get_cache() const
+		cache_t const& get_max_elements_cache() const
 		{
-			return cache_;
+			assert(max_elements_cache.second != 0);
+			return cache_[max_elements_cache.first.get<0>()].container.at(max_elements_cache.first.get<1>());
 		}
 	private:
-		boost::shared_mutex mutable cache_mutex_;
+		template<typename ContainerT>
+		struct SynchronizedContainer
+		{
+			boost::shared_mutex mutex;
+			ContainerT container;
+			
+			SynchronizedContainer()
+			{}
+			SynchronizedContainer(SynchronizedContainer &&other) noexcept
+				: container(std::move(other.container))
+			{
+			}
+		};
+
+		using cache_pool_t = std::vector<
+			SynchronizedContainer<std::unordered_map<size_t, cache_t>>
+		>;
+		
 		cache_pool_t cache_;
+		std::pair<key_t, size_t> max_elements_cache;
 	};
 }
 

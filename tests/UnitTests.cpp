@@ -11,7 +11,7 @@ BOOST_AUTO_TEST_CASE(ProofByInduction)
 {
 	auto run_test = [](std::vector<int> elements, size_t expected)
 	{
-		std::unique_ptr<algo::Cache<int>> cache = std::make_unique<algo::Cache<int>>();
+		std::unique_ptr<algo::Cache<int>> cache = std::make_unique<algo::Cache<int>>(elements.size());
 
 		{
 			boost::asio::thread_pool threads(10);
@@ -19,8 +19,8 @@ BOOST_AUTO_TEST_CASE(ProofByInduction)
 			threads.join();
 		}
 
-		auto &elements_by_count_in_cache_desc =  cache->get_cache().get<algo::CacheByElementsCountInCacheDesc>();
-		BOOST_TEST((elements_by_count_in_cache_desc.begin()->data_size() == expected));
+		auto &elements_by_count_in_cache_desc =  cache->get_max_elements_cache();
+		BOOST_TEST(elements_by_count_in_cache_desc.size() == expected);
 	};
 
 	// Док-во по индукции
@@ -51,6 +51,8 @@ BOOST_AUTO_TEST_CASE(ProofByInduction)
 	run_test({ 1,3,6,4,5 }, 4);
 
 	run_test({ 1,4,2,3,4 }, 4);
+
+	run_test({ 2,1,1,2,1 }, 3);
 }
 
 //BOOST_AUTO_TEST_CASE()
