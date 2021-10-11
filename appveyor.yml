@@ -83,7 +83,7 @@ for:
       - cmake --build .
 
     test_script:
-        - ctest --output-on-failure -C %configuration%
+        - ctest 
 
     on_finish:
         #- ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
@@ -130,7 +130,7 @@ for:
         - cmake --build .
 
     test_script:
-        - ctest --output-on-failure -C %configuration%
+        - ctest 
 
     on_finish:
         #- ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
