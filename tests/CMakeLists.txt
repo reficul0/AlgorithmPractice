@@ -76,4 +76,4 @@ endif()
 
 
 # declares a test with our executable
-add_test(${PROJECT_NAME} ${PROJECT_NAME})
+add_test(${PROJECT_NAME} ${CMAKE_BINARY_DIR}/bin/${PROJECT_NAME})
