@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
 project( UnitTests )
-enable_testing()
 
 # Adding target sources
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} SOURCES)
@@ -77,4 +76,4 @@ endif()
 
 
 # declares a test with our executable
-add_test(NAME UnitTests COMMAND ${PROJECT_NAME})
+add_test(${PROJECT_NAME} ${PROJECT_NAME})
