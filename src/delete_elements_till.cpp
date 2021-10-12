@@ -10,69 +10,37 @@ namespace algo
 		namespace
 		{
 			void delete_elements_till(
-				std::vector<element_t> elements,
+				std::vector<element_t> const &elements,
 				std::function<bool(element_t&, element_t&)> comparator,
-				Cache<element_t> *cache,
+				Cache *cache,
 				boost::asio::thread_pool &executor,
-				size_t shift_from_beginning = 0,
-				size_t elements_deleted = 0
+				Cache::erased_elements_t erased_elements_ids = Cache::erased_elements_t{}
 			) noexcept
 			{
-				if (std::is_sorted(elements.begin(), elements.end(), comparator))
+				auto elements_without_erased = Cache::apply_erasure_copy(elements, erased_elements_ids);
+				if (elements_without_erased.empty())
+					return;
+				if (elements_without_erased.size()==1 
+					|| std::is_sorted(elements_without_erased.begin(), elements_without_erased.end(), comparator))
 				{
-					cache->cache(boost::make_tuple(shift_from_beginning, elements_deleted), std::move(elements));
+					cache->cache(std::move(erased_elements_ids));
 					return;
 				}
-
-				auto current_elements_deleted = elements_deleted + 1;
-				for (size_t current_shift = 0; current_shift != elements.size(); ++current_shift)
+				for (size_t current_element_id = 0; current_element_id < elements.size(); ++current_element_id)
 				{
-					auto current_element_id = shift_from_beginning + current_shift;
-
-					// предполагаем, что точно выполним работу. Поэтому говорим, что задача выполнена ещё до её непосредственного выполнения.
-					// функция noexcept. 
-					// todo: Если же конструкторы копирования могут кидать исключения, или же исключение может реально вызываться в процессе выполнения задачи, то это надо обработать отдельно, или же переделать кеширование с проверки(read) и кеширвоания после выполнения работы(write).
-					if (bool was_it_cached = cache->is_cached(boost::make_tuple(current_element_id, current_elements_deleted)))
+					if (// не допускаем повторных вычислений(вычёркиваем только элементы выше диагонали воображаемой матрицы)
+						(erased_elements_ids.empty()==false && *erased_elements_ids.begin() > current_element_id)
+						// не вычисляем, если элемент уже вычеркнут
+						|| erased_elements_ids.find(current_element_id) != erased_elements_ids.end())
 						continue;
+					
+					auto erased_ids = std::make_shared<Cache::erased_elements_t>(erased_elements_ids);
+					erased_ids->emplace(current_element_id);
 
-					auto copy_without_current = std::make_shared<std::vector<element_t>>();
-					copy_without_current->reserve(elements.size() - 1);
-
-					// Кастомное копирование содержимого элементов, исключая текущий
-					// Альтернатива вида ниже может приводить к избыточному копированию элементов, если текущий не в конце. 
-					//		А ещё приводит к избыточному использованию памяти на 1 лишний элемент, а если же делать shrink_to_size, 
-					//			то всё станет ещё хуже(избыточная деаллокация памяти и копирование).
-					//		Скорее всего элемент не в конце, вероятность чего (N-1)/N. Против веротяности в конце 1/N.
-					//			std::vector<element_t> copy_without_current = elements;
-					//			copy_without_current.erase(elements.begin() + current_shift)
-					{
-						if (current_shift != 0)
+					boost::asio::post(executor, 
+						[&elements, comparator, cache, &executor, moved_erased_ids = std::move(erased_ids)]
 						{
-							if (/*де факто выполняется, т.к. элементы не отсортированы elements.size() > 1 && */
-								current_shift == 1)// перед текущим только первый элемент и через пару итераторов его не вставить
-								copy_without_current->emplace_back(elements.front());
-							else// если бы текущий элемент был первым, то мы бы вышли за границы массива
-								copy_without_current->insert(copy_without_current->end(), elements.begin(), elements.begin() + current_shift);
-						}
-
-						auto last_element_id = elements.size() - 1;
-						if (current_shift != last_element_id)
-						{
-							if (/*де факто выполняется, т.к. элементы не отсортированы elements.size() > 1 && */
-								current_shift == (last_element_id - 1))// после текущего только последний элемент и через пару итераторов его не вставить
-								copy_without_current->emplace_back(elements.back());
-							else
-								copy_without_current->insert(copy_without_current->end(), elements.begin() + current_shift + 1, elements.end());
-						}
-					}
-
-					boost::asio::post(
-						executor,
-						[copy_without_current, comparator, cache, &executor, shift_from_beginning,
-							current_elements_deleted]
-						{
-							return delete_elements_till(std::move(*copy_without_current), comparator, cache, executor, shift_from_beginning+1,
-								current_elements_deleted);
+							return delete_elements_till(elements, comparator, cache, executor, std::move(*moved_erased_ids));
 						}
 					);
 				}
@@ -82,12 +50,18 @@ namespace algo
 	}
 
 	void delete_elements_till(
-		std::vector<element_t> elements,
+		std::vector<element_t> const &elements,
 		std::function<bool(element_t&, element_t&)> comparator,
-		Cache<element_t> *cache,
+		Cache *cache,
 		boost::asio::thread_pool &executor
 	) noexcept
 	{
-		details::delete_elements_till(std::move(elements), std::move(comparator), cache, executor);
+		boost::asio::post(
+			executor,
+			[&elements, comparator, cache, &executor]
+			{
+				return details::delete_elements_till(elements, comparator, cache, executor);
+			}
+		);
 	}
 }

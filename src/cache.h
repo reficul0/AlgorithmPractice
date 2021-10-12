@@ -5,64 +5,60 @@
 
 namespace algo
 {
-	struct CacheByElementsCountInCacheDesc;
-	struct CacheByCachedDataKey;
-	
-	template<typename ElementT>
 	class Cache
 	{
 	public:
-		using cache_t = std::vector<int>;
-		using key_t = boost::tuple<size_t/*crossed_off_element_id*/, size_t/*crossed_off_elements*/>;
-
-		Cache(size_t elements_count)
-			: max_elements_cache(std::make_pair(
-				boost::make_tuple(0, 0),
-				0
-			))
-			, cache_()
+		using erased_elements_t = std::set<size_t, std::greater<size_t>>;
+		using best_case_detector_t = std::function<bool(erased_elements_t const&, erased_elements_t const&)>;
+		
+		Cache(best_case_detector_t best_case_detector)
+			: is_best_case_(std::move(best_case_detector))
+			, is_best_case_found_(false)
 		{
-			assert(elements_count != 0);
-			cache_.resize(elements_count);
 		}
 
-		bool is_cached(key_t key)
+		void cache(erased_elements_t erased_elements)
 		{
-			auto &crossed_off_element_cache = cache_[key.get<0>()];
-			
-			boost::shared_lock<boost::shared_mutex> read_lock(crossed_off_element_cache.mutex);
-			auto cache = crossed_off_element_cache.container.find(key.get<1>());
-			return cache != crossed_off_element_cache.container.end();
-		}
-		void cache(key_t key, cache_t cache)
-		{
-			auto &crossed_off_element_cache = cache_[key.get<0>()];
-
-			boost::upgrade_lock<boost::shared_mutex> read_lock(crossed_off_element_cache.mutex);
-			auto cached_elements = crossed_off_element_cache.container.find(key.get<1>());
-			if(cached_elements != crossed_off_element_cache.container.end())
-				// это значение уже закешировано
-				return;
+			boost::upgrade_lock<boost::shared_mutex> read_lock(erased_elements_.mutex);
+			if (is_best_case_found_ == false
+				|| is_best_case_(erased_elements, erased_elements_.container))
 			{
 				boost::upgrade_to_unique_lock<boost::shared_mutex> write_lock(read_lock);
-				cached_elements = crossed_off_element_cache.container.emplace_hint(
-					cached_elements,
-					std::make_pair(
-						key.get<1>(),
-						std::move(cache)
-					)
-				);
+				erased_elements_.container = std::move(erased_elements);
+				is_best_case_found_ = true;
 			}
-			if(cached_elements->second.size() > max_elements_cache.second)
-				max_elements_cache = std::make_pair(key, cached_elements->second.size());
 		}
 		/**
 		 * \warning multithread unsafe
+		 * \throws std::exception if there is no best cases
 		 */
-		cache_t const& get_max_elements_cache() const
+		erased_elements_t const& get_best_case_erased_elements() const
 		{
-			assert(max_elements_cache.second != 0);
-			return cache_[max_elements_cache.first.get<0>()].container.at(max_elements_cache.first.get<1>());
+			if(is_best_case_found_ == false)
+				throw std::logic_error("There is no best case.");
+			return erased_elements_.container;
+		}
+
+		template<typename ContainerT>
+		static auto apply_erasure(ContainerT &&container, erased_elements_t const &erasing_elements_ids)
+			-> decltype(std::forward<ContainerT>(container))
+		{
+			// todo: оптимизация, если элементы идут один за другим, удалить их скопом через 2 итератора
+			for (auto &erasing_element_pos : erasing_elements_ids)
+				container.erase(container.begin() + erasing_element_pos);
+
+			return std::forward<ContainerT>(container);
+		}
+		template<typename ElementT>
+		static std::vector<ElementT> apply_erasure_copy(std::vector<ElementT> container, erased_elements_t const &erasing_elements_ids)
+		{
+			return apply_erasure(std::move(container), erasing_elements_ids);
+		}
+		
+		template<typename ElementT>
+		std::vector<ElementT>& get_best_case(std::vector<ElementT> &container) const
+		{
+			return apply_erasure(container, get_best_case_erased_elements());
 		}
 	private:
 		template<typename ContainerT>
@@ -79,12 +75,9 @@ namespace algo
 			}
 		};
 
-		using cache_pool_t = std::vector<
-			SynchronizedContainer<std::unordered_map<size_t, cache_t>>
-		>;
-		
-		cache_pool_t cache_;
-		std::pair<key_t, size_t> max_elements_cache;
+		best_case_detector_t is_best_case_;
+		SynchronizedContainer<erased_elements_t> erased_elements_;
+		bool is_best_case_found_;
 	};
 }
 

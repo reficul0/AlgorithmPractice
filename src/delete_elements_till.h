@@ -28,9 +28,9 @@ namespace algo
 	 * \endcode 
 	 */
 	void delete_elements_till(
-		std::vector<element_t> elements,
+		std::vector<element_t> const &elements,
 		std::function<bool(element_t&, element_t&)> comparator,
-		Cache<element_t> *cache,
+		Cache *cache,
 		boost::asio::thread_pool &executor
 	) noexcept;
 }
