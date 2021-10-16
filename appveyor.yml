@@ -93,12 +93,12 @@ for:
         - path: ./build
           name: $(OS).$(PLATFORM)
     deploy:
-        release: algo-v$(APPVEYOR_BUILD_VERSION)-$(OS).$(PLATFORM)
+        release: algo-v$(APPVEYOR_BUILD_VERSION)
         provider: GitHub
         auth_token:
             secure: rgUyfEpChawQnVOxTng38h23UY27dyfSc3sat+8d5pCXnv3yVB2hUbSwOZ9HFlRF # your encrypted token from GitHub
         artifact: $(OS).$(PLATFORM).zip
-        description: "release algo-v$(APPVEYOR_BUILD_VERSION).$(OS).$(PLATFORM)" 
+        description: "release algo-v$(APPVEYOR_BUILD_VERSION)" 
         draft: false
         prerelease: false
         on:
@@ -154,12 +154,12 @@ for:
           name: $(OS).$(PLATFORM)
 
     deploy:
-        release: algo-v$(APPVEYOR_BUILD_VERSION)-$(OS).$(PLATFORM)
+        release: algo-v$(APPVEYOR_BUILD_VERSION)
         provider: GitHub
         auth_token:
             secure: rgUyfEpChawQnVOxTng38h23UY27dyfSc3sat+8d5pCXnv3yVB2hUbSwOZ9HFlRF # your encrypted token from GitHub
         artifact: $(OS).$(PLATFORM).zip
-        description: "release algo-v$(APPVEYOR_BUILD_VERSION).$(OS).$(PLATFORM)" 
+        description: "release algo-v$(APPVEYOR_BUILD_VERSION)" 
         draft: false
         prerelease: false
         on:
