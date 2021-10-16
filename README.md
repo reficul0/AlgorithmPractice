@@ -24,7 +24,7 @@
 - git clone git@github.com:reficul0/AlgorithmPractice.git
 - mkdir build && cd build
 - conan install ..
-- cmake -A %platform% -G "Visual Studio 15 2017" ..
+- cmake -A %platform% -G "Visual Studio 15 2017" -DBUILD_TESTS=OFF ..
 - cmake --build .
 ```
 ### Сборка на Linux
@@ -33,7 +33,7 @@
 $ git clone git@github.com:reficul0/AlgorithmPractice.git
 $ mkdir build && cd build
 $ conan install ..
-$ cmake ..
+$ cmake -DBUILD_TESTS=OFF ..
 $ cmake --build .
 ```
 ## Совместимость
