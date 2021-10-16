@@ -91,7 +91,7 @@ for:
 
     artifacts:
         - path: ./build
-          name: %OS%.%PROCESSOR_ARCHITECTURE%
+          name: $(OS).$(PROCESSOR_ARCHITECTURE)
     deploy:
         release: algo-v0.0.$(APPVEYOR_BUILD_VERSION)
         provider: GitHub
@@ -150,7 +150,7 @@ for:
 
     artifacts:
         - path: ./build
-          name: %OS%.%PROCESSOR_ARCHITECTURE%
+          name: $(OS).$(PROCESSOR_ARCHITECTURE)
 
     deploy:
         release: algo-v0.0.$(APPVEYOR_BUILD_VERSION)
