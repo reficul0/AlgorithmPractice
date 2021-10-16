@@ -2,7 +2,6 @@
 
 project(Algorithms)
 
-enable_testing()
 
 set(CMAKE_CXX_STANDARD 14)
 set(CXX_STANDARD_REQUIRED TRUE)
@@ -34,5 +33,11 @@ message(WARNING "CONAN_BOOST_ROOT ${CONAN_BOOST_ROOT}")
 message(WARNING "CONAN_INCLUDE_DIRS_BOOST ${CONAN_INCLUDE_DIRS_BOOST}")
 message(WARNING "CONAN_LIB_DIRS_BOOST ${CONAN_LIB_DIRS_BOOST}")
 
+
+enable_testing()
+include(CTest)
+
 add_subdirectory(src)
-add_subdirectory(tests)
+if(BUILD_TESTS)
+	add_subdirectory(tests)
+endif()

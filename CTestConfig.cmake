@@ -1,0 +1,34 @@
+cmake_minimum_required(VERSION 3.0.0)
+
+set(CTEST_PROJECT_NAME "AlgorithmsTest")
+set(CTEST_NIGHTLY_START_TIME "07:00:00 UTC")
+set(CTEST_DROP_METHOD "http")
+set(CTEST_DROP_SITE "ci.appveyor.com")
+set(CTEST_DROP_LOCATION "/api/testresults/xunit/$ENV{APPVEYOR_JOB_ID}")
+set(CTEST_DROP_SITE_CDASH FALSE)
+set(CTEST_CDASH_VERSION         "1.6")
+set(CTEST_CDASH_QUERY_VERSION   TRUE)
+
+set(CTEST_CUSTOM_MAXIMUM_NUMBER_OF_ERRORS           "200" )
+set(CTEST_CUSTOM_MAXIMUM_NUMBER_OF_WARNINGS         "500" )
+set(CTEST_CUSTOM_MAXIMUM_PASSED_TEST_OUTPUT_SIZE    "104857600") # 100 MB
+set(CTEST_CUSTOM_COVERAGE_EXCLUDE                   "")
+
+set(CTEST_BUILD_NAME "${CTEST_BUILD_CONFIGURATION}")
+set(CTEST_BINARY_NAME build)
+
+set(CTEST_SOURCE_DIRECTORY "${CMAKE_BINARY_DIR}")
+set(CTEST_BINARY_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+#ctest_read_custom_files(${CTEST_BINARY_DIRECTORY})
+
+#ctest_test(
+#  OUTPUT_JUNIT "${CTEST_BINARY_DIRECTORY}/junit.xml"
+#  RETURN_VALUE test_result
+#)
+#ctest_submit(PARTS Test)
+
+if (test_result)
+  message(FATAL_ERROR
+    "Failed to test")
+endif ()

@@ -32,16 +32,17 @@ namespace algo
 					{
 						for (size_t j{ 0 }; j < i; ++j)
 						{
-							auto const current_seq_len = sequences_lens[j] + 1;
+							auto const seq_len_j = sequences_lens[j] + 1;
+							auto &seq_len_ref_i = sequences_lens[i];
 							if (comparator(numbers[j], numbers[i])
-								&& current_seq_len > sequences_lens[i])
+								&& seq_len_j > seq_len_ref_i)
 							{
-								sequences_lens[i] = current_seq_len;
+								seq_len_ref_i = seq_len_j;
 								prev_indexes[i] = j;
 
-								if (sequences_lens[i] > max_sequence_len)
+								if (seq_len_ref_i > max_sequence_len)
 								{
-									max_sequence_len = sequences_lens[i];
+									max_sequence_len = seq_len_ref_i;
 									last_ind = i;
 								}
 							}
