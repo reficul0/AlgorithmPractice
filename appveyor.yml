@@ -91,18 +91,18 @@ for:
 
     artifacts:
         - path: ./build
-          name: $(OS).$(PROCESSOR_ARCHITECTURE)
+          name: $(OS).$(PLATFORM)
     deploy:
         release: algo-v0.0.$(APPVEYOR_BUILD_VERSION)
         provider: GitHub
         auth_token:
             secure: rgUyfEpChawQnVOxTng38h23UY27dyfSc3sat+8d5pCXnv3yVB2hUbSwOZ9HFlRF # your encrypted token from GitHub
-        artifact: ./build
+        artifact: $(OS).$(PLATFORM).zip
         draft: false
         prerelease: false
         on:
             branch: master                 # release from master branch only
-            APPVEYOR_REPO_TAG: true        # deploy on tag push only 
+            #APPVEYOR_REPO_TAG: true        # deploy on tag push only 
 
 ########## WINDOWS ##########
 -
@@ -150,17 +150,17 @@ for:
 
     artifacts:
         - path: ./build
-          name: $(OS).$(PROCESSOR_ARCHITECTURE)
+          name: $(OS).$(PLATFORM)
 
     deploy:
         release: algo-v0.0.$(APPVEYOR_BUILD_VERSION)
         provider: GitHub
         auth_token:
             secure: rgUyfEpChawQnVOxTng38h23UY27dyfSc3sat+8d5pCXnv3yVB2hUbSwOZ9HFlRF # your encrypted token from GitHub
-        artifact: ./build
+        artifact: $(OS).$(PLATFORM).zip
         description: "release algo-v0.0.$(APPVEYOR_BUILD_VERSION)" 
         draft: false
         prerelease: false
         on:
             branch: master                 # release from master branch only
-            APPVEYOR_REPO_TAG: true        # deploy on tag push only 
+            #APPVEYOR_REPO_TAG: true        # deploy on tag push only 
