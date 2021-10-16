@@ -3,65 +3,68 @@
 
 #include <utility>
 
+
+#include <algorithm>
+#include <cstdlib>
+#include <ctime>
+#include <deque>
+#include <iostream>
+#include <iterator>
+
 namespace algo
 {
 	namespace details
 	{
 		namespace
 		{
-			void delete_elements_till(
-				std::vector<element_t> const &elements,
-				std::function<bool(element_t&, element_t&)> comparator,
-				Cache *cache,
-				boost::asio::thread_pool &executor,
-				Cache::erased_elements_t erased_elements_ids = Cache::erased_elements_t{}
+			std::vector<element_t> delete_till_copy(
+				std::vector<element_t> const &numbers,
+				std::function<bool(element_t const&, element_t const&)> comparator
 			) noexcept
 			{
-				auto elements_without_erased = Cache::apply_erasure_copy(elements, erased_elements_ids);
-				if (elements_without_erased.empty())
-					return;
-				if (elements_without_erased.size()==1 
-					|| std::is_sorted(elements_without_erased.begin(), elements_without_erased.end(), comparator))
-				{
-					cache->cache(std::move(erased_elements_ids));
-					return;
-				}
-				for (size_t current_element_id = 0; current_element_id < elements.size(); ++current_element_id)
-				{
-					if (// не допускаем повторных вычислений(вычёркиваем только элементы выше диагонали воображаемой матрицы)
-						(erased_elements_ids.empty()==false && *erased_elements_ids.begin() > current_element_id)
-						// не вычисляем, если элемент уже вычеркнут
-						|| erased_elements_ids.find(current_element_id) != erased_elements_ids.end())
-						continue;
-					
-					auto erased_ids = std::make_shared<Cache::erased_elements_t>(erased_elements_ids);
-					erased_ids->emplace(current_element_id);
+				std::vector<size_t> prev_indexes(numbers.size());
+				size_t max_sequence_len{ 1 };
+				size_t last_ind{ 0 };
 
-					boost::asio::post(executor, 
-						[&elements, comparator, cache, &executor, moved_erased_ids = std::move(erased_ids)]
+				{
+					std::vector<size_t> sequences_lens(numbers.size(), 1);
+					for (size_t i{ 1 }; i < numbers.size(); ++i)
+					{
+						for (size_t j{ 0 }; j < i; ++j)
 						{
-							return delete_elements_till(elements, comparator, cache, executor, std::move(*moved_erased_ids));
+							auto const current_seq_len = sequences_lens[j] + 1;
+							if (comparator(numbers[j], numbers[i])
+								&& current_seq_len > sequences_lens[i])
+							{
+								sequences_lens[i] = current_seq_len;
+								prev_indexes[i] = j;
+
+								if (sequences_lens[i] > max_sequence_len)
+								{
+									max_sequence_len = sequences_lens[i];
+									last_ind = i;
+								}
+							}
 						}
-					);
+					}
 				}
 
+				std::vector<element_t> subsequence;
+				subsequence.resize(max_sequence_len);
+				auto subsequence_current = subsequence.rbegin();
+				for (size_t i{ 0 }; i < max_sequence_len; ++i, ++subsequence_current)
+					*subsequence_current = numbers[ std::exchange(last_ind, prev_indexes[last_ind]) ];
+
+				return std::move(subsequence);
 			}
 		}
 	}
 
-	void delete_elements_till(
+	std::vector<element_t> delete_till_copy(
 		std::vector<element_t> const &elements,
-		std::function<bool(element_t&, element_t&)> comparator,
-		Cache *cache,
-		boost::asio::thread_pool &executor
+		std::function<bool(element_t const&, element_t const&)> comparator
 	) noexcept
 	{
-		boost::asio::post(
-			executor,
-			[&elements, comparator, cache, &executor]
-			{
-				return details::delete_elements_till(elements, comparator, cache, executor);
-			}
-		);
+		return details::delete_till_copy(elements, std::move(comparator));
 	}
 }
