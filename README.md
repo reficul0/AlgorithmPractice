@@ -22,7 +22,7 @@
 
 ```shell
 - git clone git@github.com:reficul0/AlgorithmPractice.git
-- mkdir cliver.build && cd cliver.build
+- mkdir build && cd build
 - conan install ..
 - cmake -A %platform% -G "Visual Studio 15 2017" ..
 - cmake --build .
@@ -31,7 +31,7 @@
 
 ```bash
 $ git clone git@github.com:reficul0/AlgorithmPractice.git
-$ mkdir cliver.build && cd cliver.build
+$ mkdir build && cd build
 $ conan install ..
 $ cmake ..
 $ cmake --build .
