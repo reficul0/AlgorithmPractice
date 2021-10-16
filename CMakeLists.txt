@@ -34,10 +34,10 @@ message(WARNING "CONAN_INCLUDE_DIRS_BOOST ${CONAN_INCLUDE_DIRS_BOOST}")
 message(WARNING "CONAN_LIB_DIRS_BOOST ${CONAN_LIB_DIRS_BOOST}")
 
 
-enable_testing()
-include(CTest)
-
 add_subdirectory(src)
+
 if(BUILD_TESTS)
+	enable_testing()
+	include(CTest)
 	add_subdirectory(tests)
 endif()

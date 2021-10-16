@@ -56,6 +56,7 @@ for:
     environment:
         BUILD_CONFIG: $(configuration)
         APPVEYOR_RDP_PASSWORD: 1234as!&
+        OS: linux
 
     install:
         - echo "Downloading conan..."
@@ -77,7 +78,7 @@ for:
       - cmd: dir
       - mkdir build && cd build
       - conan install ..
-      - cmake ..
+      - cmake -DBUILD_TESTS=ON ..
         
     build_script:
       - cmake --build .
@@ -90,7 +91,18 @@ for:
 
     artifacts:
         - path: ./build
-          name: artifacts
+          name: %OS%.%PROCESSOR_ARCHITECTURE%
+    deploy:
+        release: algo-v0.0.$(APPVEYOR_BUILD_VERSION)
+        provider: GitHub
+        auth_token:
+            secure: rgUyfEpChawQnVOxTng38h23UY27dyfSc3sat+8d5pCXnv3yVB2hUbSwOZ9HFlRF # your encrypted token from GitHub
+        artifact: ./build
+        draft: false
+        prerelease: false
+        on:
+            branch: master                 # release from master branch only
+            APPVEYOR_REPO_TAG: true        # deploy on tag push only 
 
 ########## WINDOWS ##########
 -
@@ -101,6 +113,7 @@ for:
         PYTHON: C:\\Python37
         BUILD_CONFIG: $(configuration)
         APPVEYOR_RDP_PASSWORD: 1234as!&
+        OS: windows
 
     install:
         - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
@@ -124,7 +137,7 @@ for:
         - cmd: dir
         - mkdir build && cd build
         - conan install ..
-        - cmake -A %platform% -G "Visual Studio 15 2017" ..
+        - cmake -A %platform% -G "Visual Studio 15 2017" -DBUILD_TESTS=ON ..
         
     build_script:
         - cmake --build .
@@ -137,4 +150,17 @@ for:
 
     artifacts:
         - path: ./build
-          name: artifacts
+          name: %OS%.%PROCESSOR_ARCHITECTURE%
+
+    deploy:
+        release: algo-v0.0.$(APPVEYOR_BUILD_VERSION)
+        provider: GitHub
+        auth_token:
+            secure: rgUyfEpChawQnVOxTng38h23UY27dyfSc3sat+8d5pCXnv3yVB2hUbSwOZ9HFlRF # your encrypted token from GitHub
+        artifact: ./build
+        description: "release algo-v0.0.$(APPVEYOR_BUILD_VERSION)" 
+        draft: false
+        prerelease: false
+        on:
+            branch: master                 # release from master branch only
+            APPVEYOR_REPO_TAG: true        # deploy on tag push only 
