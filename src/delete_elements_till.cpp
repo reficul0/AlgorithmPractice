@@ -10,6 +10,7 @@
 #include <deque>
 #include <iostream>
 #include <iterator>
+#include <boost/container/flat_map.hpp>
 
 namespace algo
 {
@@ -22,29 +23,41 @@ namespace algo
 				std::function<bool(element_t const&, element_t const&)> comparator
 			) noexcept
 			{
-				std::vector<size_t> prev_indexes(numbers.size());
+				if (numbers.size() < 2)
+					return numbers;
+				
+				boost::container::flat_map<element_t const*, element_t const*> prev_indexes;
+				prev_indexes.reserve(numbers.size());
+				
 				size_t max_sequence_len{ 1 };
-				size_t last_ind{ 0 };
+				element_t const *last_ind{ &numbers.front() };
 
 				{
-					std::vector<size_t> sequences_lens(numbers.size(), 1);
-					for (size_t i{ 1 }; i < numbers.size(); ++i)
+					boost::container::flat_map<element_t const*, size_t> sequences_lens;
+					sequences_lens.reserve(numbers.size());
+					for(auto const &element: numbers)
+						sequences_lens.emplace(&element, 1);
+					
+					auto i = numbers.begin();
+					for (++i; i != numbers.end(); ++i)
 					{
-						for (size_t j{ 0 }; j < i; ++j)
+						auto const *addressof_i = &*i;
+						for (auto j = numbers.begin(); j != i; ++j)
 						{
-							auto const seq_len_j = sequences_lens[j] + 1;
-							auto &seq_len_ref_i = sequences_lens[i];
-							if (comparator(numbers[j], numbers[i])
+							auto const *addressof_j = &*j;
+							
+							size_t seq_len_j = sequences_lens.at(addressof_j) + 1;
+							size_t &seq_len_ref_i = sequences_lens.at(addressof_i);
+							if (comparator(*addressof_j, *addressof_i)
 								&& seq_len_j > seq_len_ref_i)
 							{
-								seq_len_ref_i = seq_len_j;
-								prev_indexes[i] = j;
-
-								if (seq_len_ref_i > max_sequence_len)
+								if (seq_len_j > max_sequence_len)
 								{
-									max_sequence_len = seq_len_ref_i;
-									last_ind = i;
+									max_sequence_len = seq_len_j;
+									last_ind = addressof_i;
 								}
+								seq_len_ref_i = seq_len_j;
+								prev_indexes.insert_or_assign(addressof_i, addressof_j);
 							}
 						}
 					}
@@ -54,7 +67,9 @@ namespace algo
 				subsequence.resize(max_sequence_len);
 				auto subsequence_current = subsequence.rbegin();
 				for (size_t i{ 0 }; i < max_sequence_len; ++i, ++subsequence_current)
-					*subsequence_current = numbers[ std::exchange(last_ind, prev_indexes[last_ind]) ];
+				{
+					*subsequence_current = *std::exchange(last_ind, prev_indexes[last_ind]);
+				}
 
 				return std::move(subsequence);
 			}
