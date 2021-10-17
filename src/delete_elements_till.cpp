@@ -33,22 +33,22 @@ namespace algo
 				element_t const *last_ind{ &numbers.front() };
 
 				{
-					std::vector<size_t> sequences_lens(numbers.size(), 1);
-
-					auto const *addressof_beginning = &numbers.front();
+					boost::container::flat_map<element_t const*, size_t> sequences_lens;
+					sequences_lens.reserve(numbers.size());
+					for(auto const &element: numbers)
+						sequences_lens.emplace(&element, 1);
+					
 					auto i = numbers.begin();
 					for (++i; i != numbers.end(); ++i)
 					{
 						auto const *addressof_i = &*i;
-						auto const shift_to_i = addressof_i - addressof_beginning;
 						for (auto j = numbers.begin(); j != i; ++j)
 						{
 							auto const *addressof_j = &*j;
-							auto const shift_to_j = addressof_j - addressof_beginning;
 							
-							size_t seq_len_j = sequences_lens.at(shift_to_j) + 1;
-							size_t &seq_len_ref_i = sequences_lens.at(shift_to_i);
-							if (comparator(*j, *i)
+							size_t seq_len_j = sequences_lens.at(addressof_j) + 1;
+							size_t &seq_len_ref_i = sequences_lens.at(addressof_i);
+							if (comparator(*addressof_j, *addressof_i)
 								&& seq_len_j > seq_len_ref_i)
 							{
 								if (seq_len_j > max_sequence_len)
