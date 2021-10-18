@@ -30,20 +30,9 @@
 #include <iterator>
 
 #include <boost/pool/pool_alloc.hpp>
-#include <boost/thread/shared_mutex.hpp>
-#include <boost/thread/locks.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/thread_pool.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/variant.hpp>
-
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/mem_fun.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/composite_key.hpp>
 
 #include <boost/container/flat_map.hpp>
+
+#include <boost/concept_check.hpp>
 
 #endif //PCH_H

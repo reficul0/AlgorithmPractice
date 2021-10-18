@@ -7,19 +7,26 @@
 
 #include "delete_elements_till.h"
 
-void run_test(std::vector<int> elements, size_t expected, size_t expectd_strict)
+using int_container_t = std::vector<int>;
+
+void run_test(int_container_t elements, size_t expected, size_t expected_strict)
 {
-	std::vector<int> max_len_seq;
-	algo::delete_till_copy(elements.begin(), elements.end(), std::back_inserter(max_len_seq), [](auto left, auto right) { return left <= right; });
+	using namespace boost::lambda;
+	
+	decltype(elements) max_len_seq;
+	max_len_seq.reserve(elements.size());
+	algo::delete_till_copy(elements.begin(), elements.end(), std::back_inserter(max_len_seq), boost::lambda::_1 <= boost::lambda::_2);
 	BOOST_TEST_PASSPOINT();
-	std::vector<int>  max_len_seq_strict;
-	algo::delete_till_copy(elements.begin(), elements.end(), std::back_inserter(max_len_seq_strict), [](auto left, auto right) -> bool { return left < right; });
+	
+	decltype(elements)  max_len_seq_strict;
+	max_len_seq_strict.reserve(elements.size());
+	algo::delete_till_copy(elements.begin(), elements.end(), std::back_inserter(max_len_seq_strict), boost::lambda::_1 < boost::lambda::_2);
 	BOOST_TEST_PASSPOINT();
 	
 	BOOST_TEST(max_len_seq.size() == expected);
-	BOOST_TEST(max_len_seq_strict.size() == expectd_strict);
+	BOOST_TEST(max_len_seq_strict.size() == expected_strict);
 };
-void run_test(std::vector<int> elements, size_t expected)
+void run_test(int_container_t elements, size_t expected)
 {
 	run_test(std::move(elements), expected, expected);
 };
@@ -79,11 +86,11 @@ BOOST_AUTO_TEST_CASE(ProofByInduction)
 
 BOOST_AUTO_TEST_CASE(DeleteOneElementFromALotOfValues)
 {
-	std::vector<int> a_lot_of_values(10000, 2);
+	int_container_t a_lot_of_values(1000, 2);
 	BOOST_TEST_PASSPOINT();
 	
 	a_lot_of_values.push_back(1);
 	BOOST_TEST_PASSPOINT();
 	
-	run_test(std::move(a_lot_of_values), 10000, 1);
+	run_test(std::move(a_lot_of_values), 1000, 1);
 }
