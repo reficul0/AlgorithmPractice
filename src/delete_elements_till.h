@@ -14,6 +14,10 @@ namespace algo
 		ComparatorT comparator
 	) noexcept
 	{
+		BOOST_CONCEPT_ASSERT(( boost::InputIterator<IteratorT> ));
+		BOOST_CONCEPT_ASSERT(( boost::OutputIterator<OutRBeginIteratorT, ElementT> ));
+		BOOST_STATIC_ASSERT( std::is_same<bool, decltype(std::declval<ComparatorT>()(*std::declval<IteratorT>(), *std::declval<IteratorT>()))>::value );
+		
 		if (begin == end)
 			return;
 
