@@ -9,9 +9,11 @@
 
 void run_test(std::vector<int> elements, size_t expected, size_t expectd_strict)
 {
-	auto max_len_seq = algo::delete_till_copy(elements, [](auto left, auto right) { return left <= right; });
+	std::vector<int> max_len_seq;
+	algo::delete_till_copy(elements.begin(), elements.end(), std::back_inserter(max_len_seq), [](auto left, auto right) { return left <= right; });
 	BOOST_TEST_PASSPOINT();
-	auto max_len_seq_strict = algo::delete_till_copy(elements, [](auto left, auto right) { return left < right; });
+	std::vector<int>  max_len_seq_strict;
+	algo::delete_till_copy(elements.begin(), elements.end(), std::back_inserter(max_len_seq_strict), [](auto left, auto right) -> bool { return left < right; });
 	BOOST_TEST_PASSPOINT();
 	
 	BOOST_TEST(max_len_seq.size() == expected);

@@ -22,6 +22,12 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <set>
+#include <algorithm>
+#include <cstdlib>
+#include <ctime>
+#include <deque>
+#include <iostream>
+#include <iterator>
 
 #include <boost/pool/pool_alloc.hpp>
 #include <boost/thread/shared_mutex.hpp>
@@ -37,5 +43,7 @@
 #include <boost/multi_index/mem_fun.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/composite_key.hpp>
+
+#include <boost/container/flat_map.hpp>
 
 #endif //PCH_H
