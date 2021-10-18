@@ -14,11 +14,11 @@ void run_test(int_container_t elements, size_t expected, size_t expected_strict)
 	using namespace boost::lambda;
 	
 	std::list<int> max_len_seq;
-	algo::delete_till_copy(elements.begin(), elements.end(), std::front_inserter(max_len_seq), boost::lambda::_1 <= boost::lambda::_2);
+	algo::delete_till_copy(elements.begin(), elements.end(), std::front_inserter(max_len_seq), boost::lambda::_1 <= boost::lambda::_2, elements.size());
 	BOOST_TEST_PASSPOINT();
 	
 	std::list<int> max_len_seq_strict;
-	algo::delete_till_copy(elements.begin(), elements.end(), std::front_inserter(max_len_seq_strict), boost::lambda::_1 < boost::lambda::_2);
+	algo::delete_till_copy(elements.begin(), elements.end(), std::front_inserter(max_len_seq_strict), boost::lambda::_1 < boost::lambda::_2, elements.size());
 	BOOST_TEST_PASSPOINT();
 	
 	BOOST_TEST(max_len_seq.size() == expected);

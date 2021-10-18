@@ -4,24 +4,23 @@
 #define ALGO_DELETE_ELEMENTS_TILL_H
 
 namespace algo
-{
-	// ComparatorT example: std::function<bool(ElementT const&, ElementT const&)>
+{// ComparatorT example: std::function<bool(ElementT const&, ElementT const&)>
 	template<typename IteratorT, typename OutRBeginIteratorT, typename ComparatorT, typename ElementT = std::decay_t<decltype(*std::declval<IteratorT>())>>
 	inline void delete_till_copy(
 		IteratorT begin,
 		IteratorT end,
 		OutRBeginIteratorT out,
-		ComparatorT comparator
+		ComparatorT comparator,
+		size_t elements_count
 	) noexcept
 	{
-		BOOST_CONCEPT_ASSERT(( boost::InputIterator<IteratorT> ));
-		BOOST_CONCEPT_ASSERT(( boost::OutputIterator<OutRBeginIteratorT, ElementT> ));
-		BOOST_STATIC_ASSERT( std::is_same<bool, decltype(std::declval<ComparatorT>()(*std::declval<IteratorT>(), *std::declval<IteratorT>()))>::value );
-		
-		if (begin == end)
+		BOOST_CONCEPT_ASSERT((boost::InputIterator<IteratorT>));
+		BOOST_CONCEPT_ASSERT((boost::OutputIterator<OutRBeginIteratorT, ElementT>));
+		BOOST_STATIC_ASSERT(std::is_same<bool, decltype(std::declval<ComparatorT>()(*std::declval<IteratorT>(), *std::declval<IteratorT>()))>::value);
+
+		if (elements_count == 0)
 			return;
 
-		auto elements_count = std::distance(begin, end);
 		boost::container::flat_map<ElementT const*, ElementT const*> prev_indexes;
 		prev_indexes.reserve(elements_count);
 
@@ -62,6 +61,19 @@ namespace algo
 		for (size_t i{ 0 }; i < max_sequence_len; ++i, ++out)
 			*out = *std::exchange(last_ind, prev_indexes[last_ind]);
 	}
+	
+	template<typename IteratorT, typename OutRBeginIteratorT, typename ComparatorT, typename ElementT = std::decay_t<decltype(*std::declval<IteratorT>())>>
+	inline void delete_till_copy(
+		IteratorT begin,
+		IteratorT end,
+		OutRBeginIteratorT out,
+		ComparatorT comparator
+	) noexcept
+	{
+		delete_till_copy(begin, end, out, comparator, std::distance(begin, end));
+	}
+	
+	
 }
 
 #endif
